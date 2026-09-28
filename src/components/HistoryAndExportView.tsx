@@ -264,9 +264,15 @@ export const HistoryAndExportView: React.FC<HistoryAndExportViewProps> = ({
                   <h4 className="font-bold text-white text-sm mb-1">
                     {p.planTitle}
                   </h4>
-                  <p className="text-xs text-slate-400 line-clamp-2 mb-3">
+                  <p className="text-xs text-slate-400 line-clamp-2 mb-2">
                     {p.programSummary}
                   </p>
+                  {p.feedbackApplied && (
+                    <div className="mb-2 p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-300 flex items-center gap-1.5">
+                      <Sparkles className="w-3 h-3 text-emerald-400 shrink-0" />
+                      <span className="line-clamp-1">{p.feedbackApplied}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">

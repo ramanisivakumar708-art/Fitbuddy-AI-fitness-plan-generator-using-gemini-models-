@@ -152,6 +152,15 @@ export default function App() {
     setCurrentTab('coach');
   };
 
+  const handlePlanUpdated = (updatedPlan: FitnessPlan) => {
+    setCurrentPlan(updatedPlan);
+    setSavedPlans((prev) => [updatedPlan, ...prev.filter((p) => p.id !== updatedPlan.id)]);
+    showNotification(
+      `Plan updated! ${updatedPlan.feedbackApplied || 'Adjusted based on your feedback.'}`,
+      'success'
+    );
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 font-sans">
       {/* Top Navbar */}
@@ -209,6 +218,7 @@ export default function App() {
               onStartWorkout={(day) => setActiveSessionDay(day)}
               onUpdateExercise={handleUpdateExercise}
               onOpenCoachWithQuestion={handleOpenCoachWithQuestion}
+              onPlanUpdated={handlePlanUpdated}
             />
           </div>
         )}

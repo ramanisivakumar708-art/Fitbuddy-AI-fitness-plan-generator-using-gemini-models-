@@ -17,15 +17,19 @@ import {
   Activity,
   Layers,
   ArrowRight,
+  Sliders,
+  MessageSquarePlus,
 } from 'lucide-react';
 import { FitnessPlan, WorkoutDay, Exercise } from '../types/fitness';
 import { ExerciseSwapModal } from './ExerciseSwapModal';
+import { PlanFeedbackModal } from './PlanFeedbackModal';
 
 interface WeeklyPlanViewProps {
   plan: FitnessPlan;
   onStartWorkout: (day: WorkoutDay) => void;
   onUpdateExercise: (dayNumber: number, oldExerciseId: string, newExercise: Exercise) => void;
   onOpenCoachWithQuestion?: (question: string) => void;
+  onPlanUpdated: (updatedPlan: FitnessPlan) => void;
 }
 
 export const WeeklyPlanView: React.FC<WeeklyPlanViewProps> = ({
@@ -33,12 +37,14 @@ export const WeeklyPlanView: React.FC<WeeklyPlanViewProps> = ({
   onStartWorkout,
   onUpdateExercise,
   onOpenCoachWithQuestion,
+  onPlanUpdated,
 }) => {
   const [selectedDayNumber, setSelectedDayNumber] = useState<number>(1);
   const [swappingExercise, setSwappingExercise] = useState<Exercise | null>(null);
   const [expandedExerciseIds, setExpandedExerciseIds] = useState<{ [id: string]: boolean }>({});
   const [viewMode, setViewMode] = useState<'day' | 'week_overview'>('day');
   const [completedMobilityDrills, setCompletedMobilityDrills] = useState<{ [key: string]: boolean }>({});
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState<boolean>(false);
 
   const activeDay =
     plan.weeklySchedule.find((d) => d.dayNumber === selectedDayNumber) ||
@@ -82,9 +88,37 @@ export const WeeklyPlanView: React.FC<WeeklyPlanViewProps> = ({
             <p className="text-sm text-slate-300 mt-1 max-w-3xl leading-relaxed">
               {plan.programSummary}
             </p>
+
+            {/* Feedback Applied Changelog Notice */}
+            {plan.feedbackApplied && (
+              <div className="mt-3.5 p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-in fade-in">
+                <div className="flex items-start sm:items-center gap-2 text-emerald-200">
+                  <Sparkles className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5 sm:mt-0" />
+                  <span>
+                    <strong className="text-emerald-300 font-semibold">AI Feedback Integrated:</strong>{' '}
+                    {plan.feedbackApplied}
+                  </span>
+                </div>
+                {plan.version && plan.version > 1 && (
+                  <span className="font-mono text-[10px] text-emerald-300 bg-slate-950 px-2 py-0.5 rounded border border-emerald-500/30 shrink-0">
+                    Iteration v{plan.version}.0
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {/* Submit Feedback Button */}
+            <button
+              onClick={() => setIsFeedbackModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-950 text-xs font-semibold text-slate-200 hover:text-white hover:border-emerald-500/60 hover:bg-slate-900 transition-all shadow-sm"
+              title="Request changes like more cardio or extra rest days"
+            >
+              <Sliders className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Refine with Feedback</span>
+            </button>
+
             {/* View mode toggle */}
             <div className="flex items-center p-1 bg-slate-950 rounded-xl border border-slate-800">
               <button
@@ -723,6 +757,19 @@ export const WeeklyPlanView: React.FC<WeeklyPlanViewProps> = ({
           isOpen={true}
           onClose={() => setSwappingExercise(null)}
           onConfirmSwap={handleConfirmSwap}
+        />
+      )}
+
+      {/* Feedback & Refinement Modal */}
+      {isFeedbackModalOpen && (
+        <PlanFeedbackModal
+          currentPlan={plan}
+          isOpen={true}
+          onClose={() => setIsFeedbackModalOpen(false)}
+          onPlanUpdated={(updated) => {
+            onPlanUpdated(updated);
+            setIsFeedbackModalOpen(false);
+          }}
         />
       )}
     </div>

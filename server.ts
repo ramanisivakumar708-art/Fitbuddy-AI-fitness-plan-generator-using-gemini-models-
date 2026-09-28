@@ -194,6 +194,10 @@ const fitnessPlanResponseSchema = {
       type: Type.ARRAY,
       items: { type: Type.STRING },
     },
+    feedbackApplied: {
+      type: Type.STRING,
+      description: 'Clear, concise 1-line summary of what user feedback was integrated (e.g. Added 2 cardio intervals & converted Thursday to active recovery)',
+    },
   },
   required: ['planTitle', 'programSummary', 'difficulty', 'splitType', 'weeklySchedule', 'nutrition', 'progressionStrategy', 'coachAdvice'],
 };
@@ -270,6 +274,85 @@ REQUIREMENTS:
     console.error('Error generating fitness plan:', error);
     return res.status(500).json({
       error: error.message || 'Failed to generate fitness plan. Please try again.',
+    });
+  }
+});
+
+// API: Modify Plan with User Feedback
+app.post('/api/modify-plan', async (req, res) => {
+  try {
+    const { originalPlan, feedback, quickOptions } = req.body;
+    if (!originalPlan || !feedback) {
+      return res.status(400).json({ error: 'Original plan and user feedback are required' });
+    }
+
+    const currentScheduleSummary = originalPlan.weeklySchedule
+      .map(
+        (d: any) =>
+          `Day ${d.dayNumber} [${d.isRestDay ? 'REST/RECOVERY' : 'WORKOUT'}]: ${d.dayName} - Focus: ${d.focus} (${d.isRestDay ? 'Active rest' : d.exercises.length + ' exercises, ~' + d.estimatedMinutes + ' min'})`
+      )
+      .join('\n');
+
+    const prompt = `You are Fitbuddy, an elite sports scientist and strength coach.
+The user wants to refine and update their current 7-day fitness plan based on specific feedback.
+
+CURRENT PLAN:
+- Plan Title: "${originalPlan.planTitle}"
+- Difficulty / Split: ${originalPlan.difficulty} / ${originalPlan.splitType}
+- Goal: ${originalPlan.userProfile?.fitnessGoal || 'General Hypertrophy'}
+- Equipment: ${originalPlan.userProfile?.equipment || 'Standard'}
+- Current Schedule:
+${currentScheduleSummary}
+
+USER'S FEEDBACK & REQUESTED CHANGES:
+"${feedback}"
+${quickOptions ? `Active options: ${JSON.stringify(quickOptions)}` : ''}
+
+INSTRUCTIONS FOR THE UPDATED PLAN:
+1. Update the 7-day schedule to directly implement the user's feedback:
+   - If they requested MORE CARDIO: Add high-intensity interval training (HIIT) finishers (e.g. assault bike, rower, or kettlebell intervals) or dedicated Zone-2 cardiovascular sessions / active recovery walks.
+   - If they requested ADDITIONAL REST DAYS: Convert one or more training days into structured active recovery & mobility days (isRestDay: true) with active recovery cardio and mobility drills.
+   - If they requested SHORTER WORKOUTS: Streamline exercises to 3-4 dense compound supersets and reduce session duration.
+   - If they requested LESS JOINT STRESS / SORENESS FIXES: Substitute shearing movements (e.g. heavy barbell squats or behind-the-neck presses) with joint-friendly alternatives (e.g. goblet squats, chest-supported rows, cables).
+   - If they requested MORE CORE / ABS / SPECIFIC MUSCLE: Add dedicated abdominal and core stabilization movements.
+2. Retain the successful baseline of the original plan while re-balancing weekly training volume and fatigue.
+3. Every training day must have complete warmups, exercises (with sets, reps, rest seconds, RPE, tempo, form cues, mistakes to avoid), and cooldowns.
+4. Every rest/recovery day must have a complete recoveryGuidance object (activeRecoveryCardio, mobilityDrills, hydrationAndNutritionTip, sleepAndCNSGuidance).
+5. In 'feedbackApplied', summarize the exact modifications in 1 clear sentence (e.g., "Added 15-minute Zone-2 cardio finishers to Day 1 & 4 and converted Day 5 into a restorative mobility rest day.").
+6. In 'coachAdvice', provide 2-3 specific coaching tips regarding their adjustments.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: prompt,
+      config: {
+        systemInstruction: 'You are Fitbuddy, an elite sports scientist and strength & conditioning coach. You modify existing fitness plans based on user feedback while ensuring safe, evidence-based periodization.',
+        temperature: 0.7,
+        responseMimeType: 'application/json',
+        responseSchema: fitnessPlanResponseSchema,
+      },
+    });
+
+    const responseText = response.text;
+    if (!responseText) {
+      throw new Error('Empty response received from Gemini model');
+    }
+
+    const parsedPlan = JSON.parse(responseText);
+    const updatedPlan = {
+      ...parsedPlan,
+      id: 'plan_' + Date.now(),
+      createdAt: new Date().toISOString(),
+      parentPlanId: originalPlan.id,
+      version: (originalPlan.version || 1) + 1,
+      userProfile: originalPlan.userProfile,
+      feedbackApplied: parsedPlan.feedbackApplied || feedback,
+    };
+
+    return res.json(updatedPlan);
+  } catch (error: any) {
+    console.error('Error modifying plan with feedback:', error);
+    return res.status(500).json({
+      error: error.message || 'Failed to update plan with feedback. Please try again.',
     });
   }
 });

@@ -136,6 +136,9 @@ export interface FitnessPlan {
   progressionStrategy: ProgressionStrategy;
   coachAdvice: string[];
   userProfile?: UserProfile;
+  feedbackApplied?: string;
+  version?: number;
+  parentPlanId?: string;
 }
 
 export interface LoggedSet {
