@@ -1,0 +1,7 @@
+{
+  "name": "Fitbuddy",
+  "description": "AI-powered personalized fitness, workout, and nutrition plan generator using Gemini models.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
